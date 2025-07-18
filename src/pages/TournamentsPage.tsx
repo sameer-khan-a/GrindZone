@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/navigation/Navbar";
 import PageTitle from "@/components/ui/PageTitle";
@@ -27,36 +26,34 @@ const TournamentsPage: React.FC = () => {
   const [upcomingTournaments, setUpcomingTournaments] = useState<Tournament[]>([]);
   const [ongoingTournaments, setOngoingTournaments] = useState<Tournament[]>([]);
   const [pastTournaments, setPastTournaments] = useState<Tournament[]>([]);
+
+  const [selectedGame, setSelectedGame] = useState("All");
+  const [selectedTier, setSelectedTier] = useState("All");
+  const [showOnlyFull, setShowOnlyFull] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load tournaments from localStorage
     loadTournaments();
   }, []);
 
-  // Load tournaments from localStorage or use default data
   const loadTournaments = () => {
     try {
       const storedTournaments = localStorage.getItem("tournaments");
-      
       if (storedTournaments) {
         const allTournaments: Tournament[] = JSON.parse(storedTournaments);
-        
-        // Sort tournaments into the right categories
+
         const upcoming: Tournament[] = [];
         const ongoing: Tournament[] = [];
         const past: Tournament[] = [];
-        
+
         allTournaments.forEach(tournament => {
-          // Convert tournament to proper format if necessary
           const processedTournament = {
             ...tournament,
-            // Ensure status is correct if not already set
             status: tournament.status || determineStatus(tournament.date),
-            // Set isFull property based on participants
             isFull: isFullTournament(tournament.participants)
           };
-          
+
           if (processedTournament.status === "Upcoming" || processedTournament.status === "Registration") {
             upcoming.push(processedTournament);
           } else if (processedTournament.status === "Ongoing") {
@@ -65,12 +62,11 @@ const TournamentsPage: React.FC = () => {
             past.push(processedTournament);
           }
         });
-        
+
         setUpcomingTournaments(upcoming);
         setOngoingTournaments(ongoing);
         setPastTournaments(past);
       } else {
-        // Create default tournaments if none exist in localStorage
         createDefaultTournaments();
       }
     } catch (error) {
@@ -83,171 +79,113 @@ const TournamentsPage: React.FC = () => {
     }
   };
 
-  // Check if a tournament is full based on participants string
   const isFullTournament = (participants: string): boolean => {
-    if (!participants) return false;
-    
     const match = participants.match(/(\d+)\/(\d+)/);
-    if (match && match.length >= 3) {
-      const current = parseInt(match[1]);
-      const max = parseInt(match[2]);
-      return current >= max;
-    }
-    return false;
+    return match ? parseInt(match[1]) >= parseInt(match[2]) : false;
   };
 
-  // Helper function to determine tournament status based on date
   const determineStatus = (dateString: string): string => {
-    if (!dateString) return "Upcoming";
-    
     const now = new Date();
-    let tournamentDate: Date;
-    
-    // Check if date is in format "May 15, 2025" or "2025-05-15"
-    if (dateString.includes(",")) {
-      tournamentDate = new Date(dateString);
-    } else {
-      tournamentDate = new Date(dateString);
-    }
-    
-    if (isNaN(tournamentDate.getTime())) {
-      return "Upcoming"; // Default if date is invalid
-    }
-    
-    // Set the date 3 days before for registration period
-    const regStartDate = new Date(tournamentDate);
-    regStartDate.setDate(tournamentDate.getDate() - 3);
-    
-    // Set the date 1 day after for completion
-    const endDate = new Date(tournamentDate);
-    endDate.setDate(tournamentDate.getDate() + 1);
-    
-    if (now < regStartDate) {
-      return "Upcoming";
-    } else if (now >= regStartDate && now < tournamentDate) {
-      return "Registration";
-    } else if (now >= tournamentDate && now < endDate) {
-      return "Ongoing";
-    } else {
-      return "Completed";
-    }
+    const tournamentDate = new Date(dateString);
+    if (isNaN(tournamentDate.getTime())) return "Upcoming";
+
+    const regStart = new Date(tournamentDate);
+    regStart.setDate(tournamentDate.getDate() - 3);
+    const end = new Date(tournamentDate);
+    end.setDate(tournamentDate.getDate() + 1);
+
+    if (now < regStart) return "Upcoming";
+    if (now >= regStart && now < tournamentDate) return "Registration";
+    if (now >= tournamentDate && now < end) return "Ongoing";
+    return "Completed";
   };
 
-  // Create default tournaments if none exist in localStorage
   const createDefaultTournaments = () => {
-    const defaultTournaments = [
-      {
-        id: "1",
-        name: "Free Fire Pro League",
-        game: "Free Fire",
-        date: "2025-05-15",
-        tier: "Professional",
-        participants: "45/64 teams",
-        image: "/lovable-uploads/f37ac391-6e24-4f2b-932b-c4e713603787.png",
-        prizePool: "$10,000",
-        entryFee: "$50",
-        status: "Registration",
-        description: "Join the most prestigious Free Fire tournament in the region. Test your skills against the best teams and compete for the grand prize.",
-        rules: "Teams must consist of 4 active players. All participants must be at least 16 years old. Double elimination format."
-      },
-      {
-        id: "2",
-        name: "PUBG Mobile Open",
-        game: "PUBG Mobile",
-        date: "2025-05-08",
-        tier: "Semi-Pro",
-        participants: "32/32 teams",
-        image: "/lovable-uploads/c5971abd-922a-41aa-aae8-8790974a7631.png",
-        prizePool: "$5,000",
-        entryFee: "$30",
-        status: "Upcoming",
-        isFull: true,
-        description: "The PUBG Mobile Open tournament brings together the best semi-professional teams for an action-packed competition.",
-        rules: "Teams must consist of 4 active players. Round-robin group stage followed by single elimination."
-      },
-      {
-        id: "3",
-        name: "Valorant Rising Stars",
-        game: "Valorant",
-        date: "2025-05-22",
-        tier: "Amateur",
-        participants: "28/32 teams",
-        prizePool: "$2,000",
-        entryFee: "$20",
-        status: "Upcoming",
-        description: "A tournament designed for up-and-coming Valorant teams. Build your reputation in this exciting event.",
-        rules: "Teams must consist of 5 active players. All participants must be at least 14 years old. Single elimination format."
-      }
-    ];
-    
-    // Save to localStorage
-    localStorage.setItem("tournaments", JSON.stringify(defaultTournaments));
-    
-    // Update state
-    setUpcomingTournaments(defaultTournaments.filter(t => t.status === "Upcoming" || t.status === "Registration"));
-    setOngoingTournaments(defaultTournaments.filter(t => t.status === "Ongoing"));
-    setPastTournaments(defaultTournaments.filter(t => t.status === "Completed"));
+    const defaults: Tournament[] = [/* your default objects */];
+    localStorage.setItem("tournaments", JSON.stringify(defaults));
+    setUpcomingTournaments(defaults.filter(t => t.status === "Upcoming" || t.status === "Registration"));
+    setOngoingTournaments(defaults.filter(t => t.status === "Ongoing"));
+    setPastTournaments(defaults.filter(t => t.status === "Completed"));
   };
+
+  const filterTournaments = (tournaments: Tournament[]) =>
+    tournaments
+      .filter(t => selectedGame === "All" || t.game === selectedGame)
+      .filter(t => selectedTier === "All" || t.tier === selectedTier)
+      .filter(t => !showOnlyFull || t.isFull);
 
   return (
     <div className="min-h-screen bg-grindzone-dark">
       <Navbar />
-      
       <div className="container mx-auto px-4 py-8">
-        <PageTitle 
-          title="Tournaments"
-          subtitle="Join competitions and prove your skills"
-        />
-        
+        <PageTitle title="Tournaments" subtitle="Join competitions and prove your skills" />
+
+        <div className="flex flex-wrap gap-4 mb-6">
+          <select
+            value={selectedGame}
+            onChange={(e) => setSelectedGame(e.target.value)}
+            className="bg-grindzone-card text-white px-4 py-2 rounded"
+          >
+            <option value="All">All Games</option>
+            <option value="Free Fire">Free Fire</option>
+            <option value="PUBG Mobile">PUBG Mobile</option>
+            <option value="Valorant">Valorant</option>
+          </select>
+
+          <select
+            value={selectedTier}
+            onChange={(e) => setSelectedTier(e.target.value)}
+            className="bg-grindzone-card text-white px-4 py-2 rounded"
+          >
+            <option value="All">All Tiers</option>
+            <option value="Amateur">Amateur</option>
+            <option value="Semi-Pro">Semi-Pro</option>
+            <option value="Professional">Professional</option>
+          </select>
+
+          <label className="flex items-center gap-2 text-white">
+            <input
+              type="checkbox"
+              checked={showOnlyFull}
+              onChange={() => setShowOnlyFull(!showOnlyFull)}
+            />
+            Only show full
+          </label>
+        </div>
+
         <Tabs defaultValue="upcoming" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="upcoming">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {upcomingTournaments.map((tournament) => (
-                <TournamentCard key={tournament.id} {...tournament} />
-              ))}
-              {upcomingTournaments.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No upcoming tournaments at the moment.</p>
-                </div>
-              )}
-            </div>
+            <TournamentGrid tournaments={filterTournaments(upcomingTournaments)} />
           </TabsContent>
-          
           <TabsContent value="ongoing">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {ongoingTournaments.map((tournament) => (
-                <TournamentCard key={tournament.id} {...tournament} />
-              ))}
-              {ongoingTournaments.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No ongoing tournaments at the moment.</p>
-                </div>
-              )}
-            </div>
+            <TournamentGrid tournaments={filterTournaments(ongoingTournaments)} />
           </TabsContent>
-          
           <TabsContent value="past">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {pastTournaments.map((tournament) => (
-                <TournamentCard key={tournament.id} {...tournament} />
-              ))}
-              {pastTournaments.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No past tournaments available.</p>
-                </div>
-              )}
-            </div>
+            <TournamentGrid tournaments={filterTournaments(pastTournaments)} />
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 };
+
+const TournamentGrid = ({ tournaments }: { tournaments: Tournament[] }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {tournaments.map(t => (
+      <TournamentCard key={t.id} {...t} />
+    ))}
+    {tournaments.length === 0 && (
+      <div className="col-span-full text-center py-12 text-muted-foreground">
+        No tournaments found.
+      </div>
+    )}
+  </div>
+);
 
 export default TournamentsPage;

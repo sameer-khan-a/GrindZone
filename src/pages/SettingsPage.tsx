@@ -12,18 +12,21 @@ import { useToast } from "@/components/ui/use-toast";
 
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 const SettingsPage: React.FC = () => {
   const { toast } = useToast();
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [confirmUsername, setConfirmUsername] = useState("");
-
+  const [openRequest, setOpenRequest] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+  const [openDelete, setOpenDelete] = useState(false);
   const currentUser = { username: "PhantomSniper" }; // Mock current user
 
   const handleSave = (formType: string) => {
@@ -270,26 +273,101 @@ const SettingsPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-grindzone-card mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle size={18} />
-                  Data Privacy
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  We value your privacy and are committed to protecting your personal data. You can request a copy of your data or delete your account at any time.
-                </p>
+           <Card className="bg-grindzone-card mt-6 border border-grindzone-border">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-red-500">
+          <AlertCircle size={18} />
+          Data Privacy
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          We value your privacy and are committed to protecting your personal data.
+          You can request a copy of your data or permanently delete all stored information associated with your account.
+        </p>
 
-                <div className="flex gap-4">
-                  <Button variant="outline">Request Data</Button>
-                  <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
-                    Delete All Data
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Request Data Dialog */}
+          <Dialog open={openRequest} onOpenChange={setOpenRequest}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Request My Data</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Request Your Data</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to request a copy of your data? A download link will be sent to your registered email.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpenRequest(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setOpenRequest(false);
+                    // Add actual request logic here
+                    toast({
+                      title: "Request Sent",
+                      description: "We’ve emailed you a link to download your data.",
+                    });
+                  }}
+                >
+                  Confirm Request
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Data Dialog */}
+          <Dialog open={openDelete} onOpenChange={setOpenDelete}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="text-destructive border-destructive hover:bg-destructive/10"
+              >
+                Delete All My Data
+              </Button>
+            </DialogTrigger>
+       <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-destructive">Confirm Deletion</DialogTitle>
+                <DialogDescription className="mb-4">
+                  This action is <b>irreversible</b>. All of your personal data will be permanently deleted from our systems.
+                  <br />
+                  Please type <code className="bg-muted px-1 rounded text-sm">DELETE</code> below to confirm.
+                </DialogDescription>
+                <Input
+                  placeholder="Type DELETE to confirm"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                />
+              </DialogHeader>
+              <DialogFooter className="mt-4">
+                <Button variant="outline" onClick={() => setOpenDelete(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                  disabled={confirmText !== "DELETE"}
+                  onClick={() => {
+                    setOpenDelete(false);
+                    setConfirmText("");
+                    toast({
+                      title: "Data Deletion Requested",
+                      description: "We are processing your request to delete all data.",
+                      variant: "destructive",
+                    });
+                  }}
+                >
+                  Yes, Delete All
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
+    </Card>
           </TabsContent>
         </Tabs>
       </div>
