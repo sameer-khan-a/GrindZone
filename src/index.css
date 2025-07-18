@@ -1,0 +1,81 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 270 75% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 270 75% 60%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 270 75% 60%;
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-zinc-950 text-foreground;
+    background-image: radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.05), transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+/* Custom utility classes */
+@layer components {
+  .glow-text {
+    @apply text-purple-500 drop-shadow-[0_0_3px_rgba(124,58,237,0.5)];
+  }
+  
+  .card-glow {
+    @apply shadow-[0_0_10px_rgba(124,58,237,0.1)] hover:shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-shadow duration-300;
+  }
+  
+  .btn-primary {
+    @apply bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-500 transition-colors duration-200 font-medium shadow-glow-sm hover:shadow-glow-purple;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent text-purple-500 border border-purple-500 px-6 py-2 rounded hover:bg-purple-500/10 transition-colors duration-200 font-medium;
+  }
+  
+  .nav-link {
+    @apply px-4 py-2 flex items-center gap-2 rounded-md transition-colors hover:bg-purple-500/10;
+  }
+  
+  .nav-link-active {
+    @apply bg-purple-600 text-white shadow-glow-sm;
+  }
+
+  .form-input {
+    @apply bg-zinc-900 border border-zinc-800 rounded-md px-4 py-2 w-full focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-colors;
+  }
+}
