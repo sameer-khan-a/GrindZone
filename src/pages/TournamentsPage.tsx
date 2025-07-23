@@ -19,6 +19,7 @@ interface Tournament {
   entryFee?: string;
   description?: string;
   rules?: string;
+  _id?: string; // in case backend sends MongoDB _id
 }
 
 const TournamentsPage: React.FC = () => {
@@ -34,41 +35,44 @@ const TournamentsPage: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadTournaments();
+    fetchTournaments();
   }, []);
 
-  const loadTournaments = () => {
+  const fetchTournaments = async () => {
     try {
-      const storedTournaments = localStorage.getItem("tournaments");
-      if (storedTournaments) {
-        const allTournaments: Tournament[] = JSON.parse(storedTournaments);
+      const response = await fetch("http://localhost:5000/api/tournaments");
+      if (!response.ok) throw new Error("Failed to fetch tournaments");
+      const allTournamentsRaw: Tournament[] = await response.json();
 
-        const upcoming: Tournament[] = [];
-        const ongoing: Tournament[] = [];
-        const past: Tournament[] = [];
+      // Normalize IDs: use id if exists, else _id, else fallback unique string
+      const allTournaments = allTournamentsRaw.map((t, idx) => ({
+        ...t,
+        id: t.id || t._id || `temp-id-${idx}`,
+      }));
 
-        allTournaments.forEach(tournament => {
-          const processedTournament = {
-            ...tournament,
-            status: tournament.status || determineStatus(tournament.date),
-            isFull: isFullTournament(tournament.participants)
-          };
+      const upcoming: Tournament[] = [];
+      const ongoing: Tournament[] = [];
+      const past: Tournament[] = [];
 
-          if (processedTournament.status === "Upcoming" || processedTournament.status === "Registration") {
-            upcoming.push(processedTournament);
-          } else if (processedTournament.status === "Ongoing") {
-            ongoing.push(processedTournament);
-          } else {
-            past.push(processedTournament);
-          }
-        });
+      allTournaments.forEach(tournament => {
+        const processedTournament = {
+          ...tournament,
+          status: tournament.status || determineStatus(tournament.date),
+          isFull: isFullTournament(tournament.participants)
+        };
 
-        setUpcomingTournaments(upcoming);
-        setOngoingTournaments(ongoing);
-        setPastTournaments(past);
-      } else {
-        createDefaultTournaments();
-      }
+        if (processedTournament.status === "Upcoming" || processedTournament.status === "Registration") {
+          upcoming.push(processedTournament);
+        } else if (processedTournament.status === "Ongoing") {
+          ongoing.push(processedTournament);
+        } else {
+          past.push(processedTournament);
+        }
+      });
+
+      setUpcomingTournaments(upcoming);
+      setOngoingTournaments(ongoing);
+      setPastTournaments(past);
     } catch (error) {
       console.error("Error loading tournaments:", error);
       toast({
@@ -100,14 +104,6 @@ const TournamentsPage: React.FC = () => {
     return "Completed";
   };
 
-  const createDefaultTournaments = () => {
-    const defaults: Tournament[] = [/* your default objects */];
-    localStorage.setItem("tournaments", JSON.stringify(defaults));
-    setUpcomingTournaments(defaults.filter(t => t.status === "Upcoming" || t.status === "Registration"));
-    setOngoingTournaments(defaults.filter(t => t.status === "Ongoing"));
-    setPastTournaments(defaults.filter(t => t.status === "Completed"));
-  };
-
   const filterTournaments = (tournaments: Tournament[]) =>
     tournaments
       .filter(t => selectedGame === "All" || t.game === selectedGame)
@@ -120,6 +116,7 @@ const TournamentsPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <PageTitle title="Tournaments" subtitle="Join competitions and prove your skills" />
 
+        {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-6">
           <select
             value={selectedGame}
@@ -153,6 +150,7 @@ const TournamentsPage: React.FC = () => {
           </label>
         </div>
 
+        {/* Tabs */}
         <Tabs defaultValue="upcoming" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
