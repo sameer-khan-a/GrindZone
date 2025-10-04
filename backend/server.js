@@ -25,20 +25,22 @@ app.use(express.json());
 // MongoDB Connection
 const mongoURI =
   process.env.MONGO_URI ||
-  "mongodb+srv://sameerkhan:vtech2012@mern.qwxon.mongodb.net/grindzone?retryWrites=true&w=majority&appName=MERN";
-
+  "mongodb+srv://Sameer:suEQVSbWs6dTVNV4@cluster0.ujcjg.mongodb.net/GrindZone?retryWrites=true&w=majority&appName=Cluster0";
 mongoose
   .connect(mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log('✅ MongoDB connected to grindzone');
+    // print exact DB name mongoose is using and whether MONGO_URI is present
+    const dbName = mongoose.connection.db && mongoose.connection.db.databaseName;
+    console.log('✅ MongoDB connected. databaseName=', dbName || '(unknown)');
+    console.log('MONGO_URI present in env:', !!process.env.MONGO_URI);
+    // do NOT print the URI itself (avoid leaking secrets)
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err);
   });
-
 // Default Route
 app.get('/', (req, res) => {
   res.send('🎮 Backend server is running');

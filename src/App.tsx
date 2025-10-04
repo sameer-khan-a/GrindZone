@@ -19,6 +19,9 @@ import InvitePlayersPage from "./pages/InvitePlayersPage";
 import ViewMatchesPage from "./pages/ViewMatchesPage";
 import ManageSquadPage from "./pages/ManageSquadPage";
 import MatchDetailPage from "./pages/MatchDetailPage";
+import EditTournamentPage from "./pages/EditTournamentPage";
+
+// inside <Routes>
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
@@ -68,6 +71,14 @@ const App = () => {
                 </ProtectedRoute>
               } 
             />
+            <Route
+  path="/edit-tournament/:id"
+  element={
+    <AdminRoute>
+      <EditTournamentPage />
+    </AdminRoute>
+  }
+/>
             <Route 
               path="/leaderboard" 
               element={

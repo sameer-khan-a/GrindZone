@@ -1,4 +1,4 @@
-
+// src/pages/AddTournamentPage.tsx
 import React, { useState } from "react";
 import Navbar from "@/components/navigation/Navbar";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { Calendar } from "lucide-react";
-import { addTournament } from "@/services/tournamentService";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+
+const buildHeaders = () => {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = localStorage.getItem("token");
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+};
 
 const AddTournamentPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +30,7 @@ const AddTournamentPage: React.FC = () => {
     game: "",
     date: "",
     tier: "",
-    maxTeams: "",
+    maxTeams: "32",
     prizePool: "",
     entryFee: "",
     description: "",
@@ -32,62 +40,76 @@ const AddTournamentPage: React.FC = () => {
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // basic validation helper
+  const validate = () => {
+    if (!formData.name.trim()) return "Tournament name is required";
+    if (!formData.game.trim()) return "Game is required";
+    if (!formData.date) return "Tournament date is required";
+    const max = Number(formData.maxTeams);
+    if (Number.isNaN(max) || max <= 0) return "Maximum teams must be a positive number";
+    return null;
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Validate form
-    if (!formData.name || !formData.game || !formData.date) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
+    const err = validate();
+    if (err) {
+      toast({ title: "Missing/invalid info", description: err, variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
 
     try {
-      // Create new tournament object
-      const newTournament = {
-        id: `t${Date.now()}`, // Generate unique ID
-        name: formData.name,
-        game: formData.game,
-        date: formData.date,
-        tier: formData.tier,
-        participants: `0/${formData.maxTeams || '32'} teams`,
-        prizePool: formData.prizePool ? `$${formData.prizePool}` : "",
-        entryFee: formData.entryFee ? `$${formData.entryFee}` : "",
-        status: "Registration",
-        description: formData.description,
-        rules: formData.rules
+      // prepare payload matching your DB shape — NO hard-coded status
+      const maxTeams = Number(formData.maxTeams) || 32;
+      const payload: any = {
+        name: formData.name.trim(),
+        game: formData.game.trim(),
+        // send ISO date (backend decides status from date)
+        date: new Date(formData.date).toISOString(),
+        tier: formData.tier?.trim() || "Standard",
+        // keep participants as string like "0/32" to match existing docs
+        participants: `0/${maxTeams}`,
+        prizePool: formData.prizePool ? String(formData.prizePool).includes("$") ? formData.prizePool : `$${formData.prizePool}` : "",
+        entryFee: formData.entryFee ? (String(formData.entryFee).includes("$") ? formData.entryFee : `$${formData.entryFee}`) : "Free",
+        // IMPORTANT: no status field here — backend should compute it from date
+        description: formData.description?.trim() || "",
+        rules: formData.rules ? formData.rules.split(".").map(s => s.trim()).filter(Boolean) : [],
+        image: "", // optional, leave empty by default
       };
 
-      // Add new tournament using the service
-      addTournament(newTournament);
+      const res = await fetch(`${API_BASE}/tournaments`, {
+        method: "POST",
+        headers: buildHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        throw new Error(`Server responded ${res.status}: ${text}`);
+      }
+
+      const created = await res.json();
 
       toast({
         title: "Tournament created",
-        description: "The tournament has been added successfully",
+        description: `${created.name || "Tournament"} created successfully`,
       });
 
-      // Redirect to admin page
-      setTimeout(() => {
-        navigate("/admin");
-      }, 1500);
-    } catch (error) {
+      // go back to admin and let it refetch fresh data
+      navigate("/admin");
+    } catch (error: any) {
       console.error("Error creating tournament:", error);
       toast({
         title: "Error",
-        description: "Failed to create tournament",
-        variant: "destructive"
+        description: error?.message || "Failed to create tournament",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -97,7 +119,7 @@ const AddTournamentPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Add New Tournament</h1>
@@ -105,7 +127,7 @@ const AddTournamentPage: React.FC = () => {
             Back to Admin
           </Button>
         </div>
-        
+
         <Card className="bg-zinc-900 border-zinc-800 mb-8">
           <CardHeader>
             <CardTitle className="text-xl">Tournament Details</CardTitle>
@@ -124,7 +146,7 @@ const AddTournamentPage: React.FC = () => {
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="game">Game *</Label>
                   <Input
@@ -136,14 +158,14 @@ const AddTournamentPage: React.FC = () => {
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="date">Tournament Date *</Label>
                   <div className="relative">
                     <Input
                       id="date"
                       name="date"
-                      type="date"
+                      type="datetime-local"
                       value={formData.date}
                       onChange={handleInputChange}
                       className="bg-zinc-950 border-zinc-800"
@@ -151,7 +173,7 @@ const AddTournamentPage: React.FC = () => {
                     <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="tier">Tournament Tier</Label>
                   <Input
@@ -163,7 +185,7 @@ const AddTournamentPage: React.FC = () => {
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="maxTeams">Maximum Teams</Label>
                   <Input
@@ -176,32 +198,32 @@ const AddTournamentPage: React.FC = () => {
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="prizePool">Prize Pool (USD)</Label>
+                  <Label htmlFor="prizePool">Prize Pool</Label>
                   <Input
                     id="prizePool"
                     name="prizePool"
-                    placeholder="e.g. 5000"
+                    placeholder="e.g. 5000 or $5000"
                     value={formData.prizePool}
                     onChange={handleInputChange}
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="entryFee">Entry Fee (USD)</Label>
+                  <Label htmlFor="entryFee">Entry Fee</Label>
                   <Input
                     id="entryFee"
                     name="entryFee"
-                    placeholder="e.g. 250"
+                    placeholder="e.g. 250 or Free"
                     value={formData.entryFee}
                     onChange={handleInputChange}
                     className="bg-zinc-950 border-zinc-800"
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description">Tournament Description</Label>
                 <Textarea
@@ -213,7 +235,7 @@ const AddTournamentPage: React.FC = () => {
                   className="min-h-[120px] bg-zinc-950 border-zinc-800"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="rules">Tournament Rules</Label>
                 <Textarea
@@ -225,17 +247,17 @@ const AddTournamentPage: React.FC = () => {
                   className="min-h-[150px] bg-zinc-950 border-zinc-800"
                 />
               </div>
-              
+
               <div className="flex justify-end gap-4">
-                <Button 
-                  variant="outline" 
-                  type="button" 
+                <Button
+                  variant="outline"
+                  type="button"
                   onClick={() => navigate('/admin')}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="bg-purple-600 hover:bg-purple-500"
                   disabled={isSubmitting}
                 >
