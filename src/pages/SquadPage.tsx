@@ -1,3 +1,4 @@
+// src/pages/SquadPage.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/navigation/Navbar";
@@ -44,11 +45,9 @@ const buildHeaders = () => {
 
 const normalizeSquad = (raw: any, idx = 0): Squad => {
   const id = raw.id || raw._id || `tmp-${idx}`;
-  // members may be array, object keyed by id, or a single object
   let members: Member[] = [];
   if (Array.isArray(raw.members)) members = raw.members;
   else if (raw.members && typeof raw.members === "object") {
-    // if it's an object with numeric keys or _id keys, convert to array
     if (Object.keys(raw.members).every(k => typeof (raw.members as any)[k] === "object")) {
       members = Object.values(raw.members as any);
     } else {
@@ -215,13 +214,12 @@ const SquadPage: React.FC = () => {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "r") {
-        // refresh
         abortRef.current?.abort();
         const c = new AbortController();
         abortRef.current = c;
         fetchSquads(c.signal);
       }
-      if (e.key.toLowerCase() === "n") navigate("/create-squad"); // go to create page
+      if (e.key.toLowerCase() === "n") navigate("/create-squad");
     };
     window.addEventListener("keydown", onKey);
 
@@ -249,11 +247,10 @@ const SquadPage: React.FC = () => {
   const pageData = useMemo(() => filtered.slice((page - 1) * pageSize, page * pageSize), [filtered, page]);
 
   /* ---------------- actions ---------------- */
-  const openCreate = () => navigate("/create-squad"); // NAVIGATE to create page now
+  const openCreate = () => navigate("/create-squad");
   const openEdit = (s: Squad) => { setModalInitial(s); setModalOpen(true); };
 
   const handleSaveSquad = async (payload: Partial<Squad>) => {
-    // if payload has id -> update, else create
     try {
       if (payload.id || payload._id) {
         const id = payload.id || payload._id!;
@@ -292,7 +289,6 @@ const SquadPage: React.FC = () => {
       const res = await fetch(`${API_BASE}/squads/${id}`, { method: "DELETE", headers: buildHeaders() });
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       setSquads(prev => prev.filter(s => (s.id || s._id) !== id));
-      // pick a new active id if needed
       if (activeId === id) {
         setActiveId(prev => {
           const remaining = squads.filter(s => (s.id || s._id) !== id);
@@ -372,7 +368,7 @@ const SquadPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* list */}
+          {/* list */} 
           <div className="lg:col-span-1 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold mb-2">Your Squads</h2>
@@ -432,9 +428,16 @@ const SquadPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={() => navigate("/manage-squad")}>Manage Squad</Button>
-                  <Button variant="ghost" onClick={() => activeSquad && openEdit(activeSquad)} aria-label="Edit squad"><EditIcon size={16} /></Button>
-                  <Button variant="destructive" onClick={() => activeSquad && confirmDelete(activeSquad)} aria-label="Delete squad"><Trash2Icon size={16} /></Button>
+                  <Button variant="outline" onClick={() => {
+                    if (!activeSquad) return;
+                    const sid = String(activeSquad._id ?? activeSquad.id ?? "");
+                    console.debug("[InviteNav] squad id:", sid, "isValid?", /^[0-9a-fA-F]{24}$/.test(sid));
+                    navigate(`/invite-players?squadId=${encodeURIComponent(sid)}`, {
+                      state: { squadId: sid, squadName: activeSquad?.name }
+                    });
+                  }}>Invite Players</Button>
+
+                  <Button className="bg-grindzone-blue hover:bg-grindzone-blue-light" onClick={() => navigate("/view-matches")}>View Matches</Button>
                 </div>
               </CardHeader>
 
@@ -501,10 +504,14 @@ const SquadPage: React.FC = () => {
                     </div>
 
                     <div className="flex justify-center gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => navigate("/invite-players", { state: { squadId: activeSquad?._id || activeSquad?.id, squadName: activeSquad?.name } })}
-                      >
+                      <Button variant="outline" onClick={() => {
+                        if (!activeSquad) return;
+                        const sid = String(activeSquad._id ?? activeSquad.id ?? "");
+                        console.debug("[InviteNav] squad id:", sid, "isValid?", /^[0-9a-fA-F]{24}$/.test(sid));
+                        navigate(`/invite-players?squadId=${encodeURIComponent(sid)}`, {
+                          state: { squadId: sid, squadName: activeSquad?.name }
+                        });
+                      }}>
                         Invite Players
                       </Button>
 
@@ -519,7 +526,6 @@ const SquadPage: React.FC = () => {
 
         <ConfirmModal open={confirmOpen} title={`Delete ${deleteTargetRef.current?.name ?? "squad"}?`} description={`This will permanently delete ${deleteTargetRef.current?.name ?? "this squad"}.`} onConfirm={doDelete} onCancel={() => setConfirmOpen(false)} />
 
-        {/* Edit modal only — creating handled on separate page */}
         <SquadModal open={modalOpen} initial={modalInitial} onClose={() => setModalOpen(false)} onSave={handleSaveSquad} />
       </main>
     </div>

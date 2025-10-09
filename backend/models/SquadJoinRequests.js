@@ -1,29 +1,20 @@
 // models/SquadJoinRequest.js
-
 import mongoose from "mongoose";
 
-const SquadJoinRequestSchema = new mongoose.Schema(
+const { Schema, model, models } = mongoose;
+
+const SquadJoinRequestSchema = new Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    squadId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Squad",
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ["pending", "accepted", "rejected"],
-      default: "pending",
-    },
-    message: {
-      type: String,
-    },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    squadId: { type: Schema.Types.ObjectId, ref: "Squad", required: true },
+    status: { type: String, enum: ["pending", "accepted", "rejected", "invited"], default: "pending" },
+    message: { type: String },
+    invitedBy: { type: Schema.Types.ObjectId, ref: "User" }, // optional: who invited/created
   },
   { timestamps: true }
 );
 
-export default mongoose.model("SquadJoinRequest", SquadJoinRequestSchema);
+// Prevent duplicates at DB level (userId + squadId should be unique)
+SquadJoinRequestSchema.index({ userId: 1, squadId: 1 }, { unique: true });
+
+export default models.SquadJoinRequest || model("SquadJoinRequest", SquadJoinRequestSchema);
